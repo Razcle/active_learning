@@ -124,7 +124,15 @@ def low_rank_gaussian_logdet(L,sigma):
     inverse_var=1.0/var
     return torch.logdet(torch.diag(torch.ones([rank]))+inverse_var*(L.t())@L)+dim*tf.log(var)
     
+
+def low_rank_gaussian_one_sample(mu,L,sigma):
+    # L is D*R
+    dim=L.size(0)
+    rank=L.size(1)
+    eps_z=torch.randn([rank])
+    eps=torch.randn([dim])
     
+    return eps_z@L.t()+eps*sigma+mu
 
 def low_rank_gaussian_sample(mu,L,sigma,amount):
     # L is D*R
