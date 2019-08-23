@@ -184,3 +184,20 @@ def general_kl_divergence(mu_1,cov_1,mu_2,cov_2):
     cov_2_inverse=torch.inverse(cov_2)
     return -0.5*(torch.logdet(cov_1)-torch.logdet(cov_2)+mu_1.size(0)-torch.trace(cov_1@cov_2_inverse)-mu_diff.t()@cov_2_inverse@mu_diff)
    
+    
+def sample_from_batch_categorical(batch_logits):
+    ### shape batch*dim
+    ### gumbel max trick
+    noise = torch.rand(batch_logits.size()).cuda()
+    return torch.argmax(batch_logits - torch.log(-torch.log(noise)), dim=-1)
+
+
+def sample_from_batch_categorical_multiple(batch_logits,sample_num=1):
+    ### shape batch*dim
+    ### gumbel max trick
+    shape=list(batch_logits.size())
+    shape.insert(-1, sample_num)
+    noise = torch.rand(shape).cuda()
+    batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
+    return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
+   
