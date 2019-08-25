@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import torch
 import torchvision
@@ -58,8 +58,8 @@ class Net(nn.Module):
         self.q_mu=(torch.randn(200)*0.1).requires_grad_()
         self.q_diag=torch.tensor(np.ones(200), dtype=torch.float, requires_grad=True)
     
-        self.params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(self.params, lr=0.0001)
+        params = list(self.parameters()) + [self.q_mu,self.q_diag]
+        self.optimizer = optim.Adam(params, lr=0.00003)
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 
@@ -321,8 +321,6 @@ for epoch in range(0,100):
     print('big_epoch:', epoch, 'start training...')
     print('train_data_size',init_train_label.size(0))
     nn_tanh.train(init_train_data,init_train_label)
-    learning_rate=0.00003+(0.0005-0.00003)*(1-epoch/100)
-    nn_tanh.optimizer = optim.Adam(nn_tanh.params, lr=learning_rate)
     
     accuracy=nn_tanh.test(test_data_tensor.cuda(),test_label_tensor.cuda())
     accuracy_list.append(accuracy)
@@ -334,23 +332,23 @@ for epoch in range(0,100):
 #     print('epoch:', epoch, 'start active learning...')
 
 
+#    for i in range(0,10):
+#        active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
+#        entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
+#        _, index = entropy_list.max(0)
+#        init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
+#        init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
+        
     for i in range(0,10):
         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-        entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
-        _, index = entropy_list.max(0)
-        init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
-        init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
-        
-#     for i in range(0,10):
-#         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-#         entropy_list=[]
-#         for index in range(i*6000,(i+1)*6000):
-#             entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
-#             entropy_list.append(entropy)
+        entropy_list=[]
+        for index in range(i*6000,(i+1)*6000):
+            entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
+            entropy_list.append(entropy)
 
-#         index_max = np.argmax(entropy_list)
-#         init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
-#         init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
+        index_max = np.argmax(entropy_list)
+        init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
+        init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
         
 # plt.title('test_accuracy')
 # plt.plot(accuracy_list)

@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import torch
 import torchvision
@@ -59,7 +59,7 @@ class Net(nn.Module):
         self.q_diag=torch.tensor(np.ones(200), dtype=torch.float, requires_grad=True)
     
         self.params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(self.params, lr=0.0001)
+        self.optimizer = optim.Adam(self.params, lr=0.00003)
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 
@@ -321,8 +321,6 @@ for epoch in range(0,100):
     print('big_epoch:', epoch, 'start training...')
     print('train_data_size',init_train_label.size(0))
     nn_tanh.train(init_train_data,init_train_label)
-    learning_rate=0.00003+(0.0005-0.00003)*(1-epoch/100)
-    nn_tanh.optimizer = optim.Adam(nn_tanh.params, lr=learning_rate)
     
     accuracy=nn_tanh.test(test_data_tensor.cuda(),test_label_tensor.cuda())
     accuracy_list.append(accuracy)

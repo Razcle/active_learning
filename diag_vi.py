@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import torch
 import torchvision
@@ -52,14 +52,14 @@ class Net(nn.Module):
 #         self.q_mu=torch.randn(200, requires_grad=True).cuda()
 #         self.q_diag=torch.ones(200, requires_grad=True).cuda()
 
-        self.prior_mu=torch.tensor(np.zeros(200), dtype=torch.float, requires_grad=False)
-        self.prior_diag=torch.tensor(np.ones(200), dtype=torch.float, requires_grad=False)
+        self.prior_mu=torch.tensor(np.zeros(self.final_weight_dim), dtype=torch.float, requires_grad=False)
+        self.prior_diag=torch.tensor(np.ones(self.final_weight_dim), dtype=torch.float, requires_grad=False)
         
-        self.q_mu=(torch.randn(200)*0.1).requires_grad_()
-        self.q_diag=torch.tensor(np.ones(200), dtype=torch.float, requires_grad=True)
+        self.q_mu=(torch.randn(self.final_weight_dim)*0.1).requires_grad_()
+        self.q_diag=torch.tensor(np.ones(self.final_weight_dim), dtype=torch.float, requires_grad=True)
     
-        params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(params, lr=0.0001)
+        self.params = list(self.parameters()) + [self.q_mu,self.q_diag]
+        self.optimizer = optim.Adam(self.params, lr=0.00005)
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 
@@ -69,7 +69,7 @@ class Net(nn.Module):
         x = F.relu(F.max_pool2d(self.conv2(x), 2))
         x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
-        x =torch.tanh(self.fc2(x))
+        x =self.fc2(x)
         x= torch.matmul(x,final_weight)
         return F.log_softmax(x,dim=-1)
     
@@ -80,7 +80,7 @@ class Net(nn.Module):
         x = F.relu(F.max_pool2d(self.conv2(x), 2))
         x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
-        x =  torch.tanh(self.fc2(x))
+        x =  self.fc2(x)
         return x
     
     def predict(self,x):
@@ -181,7 +181,7 @@ class Net(nn.Module):
         with torch.no_grad():
             eps=torch.randn([sample_num,self.final_weight_dim]).cuda()
             #eps=torch.tensor(np.random.normal(size=[sample_num,200]),dtype=torch.float)
-            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,20,10).permute(0, 2, 1)
+            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)[0]
 
             output_logit=final_weight_samples@feature_of_data
@@ -189,7 +189,7 @@ class Net(nn.Module):
 
             eps=torch.randn([sample_num,self.final_weight_dim]).cuda()
             #eps=torch.tensor(np.random.normal(size=[sample_num,200]),dtype=torch.float)
-            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,20,10).permute(0, 2, 1)
+            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)[0]
             output_logit=final_weight_samples@feature_of_data
             output_dis_for_sample=torch.distributions.categorical.Categorical(logits=output_logit)
@@ -203,7 +203,7 @@ class Net(nn.Module):
         with torch.no_grad():
             eps=torch.randn([sample_num,self.final_weight_dim]).cuda()
             #eps=torch.tensor(np.random.normal(size=[sample_num,200]),dtype=torch.float)
-            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,20,10).permute(0, 2, 1)
+            final_weight_samples=(torch.sqrt(self.q_diag.cuda()).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.cuda()).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
 #             print(final_weight_samples.size())
             output_logit=(final_weight_samples@feature_of_data.t()).permute(2,0,1)
@@ -283,7 +283,8 @@ class Net(nn.Module):
         else:
             batch_size=100
             iteration=int(x.size(0)/batch_size)
-        for epoch in range(0,3000):
+        #scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1000, gamma=0.8)
+        for epoch in range(0,5000):
             for it in range(0,int(x.size(0)/batch_size)+1):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
@@ -299,6 +300,7 @@ class Net(nn.Module):
                 neg_elbo.backward()
                 self.optimizer.step()
                 train_losses.append(neg_elbo.item())
+            #scheduler.step()
 #         plt.plot(train_losses)
 #         plt.show()
         
@@ -321,6 +323,8 @@ for epoch in range(0,100):
     print('big_epoch:', epoch, 'start training...')
     print('train_data_size',init_train_label.size(0))
     nn_tanh.train(init_train_data,init_train_label)
+   # learning_rate=0.0005-(0.0005-0.00003)*(np.exp(epoch-100))
+    #nn_tanh.optimizer = optim.Adam(nn_tanh.params, lr=learning_rate)
     
     accuracy=nn_tanh.test(test_data_tensor.cuda(),test_label_tensor.cuda())
     accuracy_list.append(accuracy)
