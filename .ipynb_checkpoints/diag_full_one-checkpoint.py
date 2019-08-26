@@ -136,7 +136,7 @@ class Net(nn.Module):
             output_logit=final_weight_samples@feature_of_data
             output_dis=torch.distributions.categorical.Categorical(logits=output_logit)
 
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu,self.q_L,self.q_sigma,sample_num).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+            final_weight_samples=low_rank_gaussian_sample(self.q_mu.cuda(),self.q_L.cuda(),self.q_sigma.cuda(),sample_num).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)[0]
             output_logit=final_weight_samples@feature_of_data
             output_dis_for_sample=torch.distributions.categorical.Categorical(logits=output_logit)

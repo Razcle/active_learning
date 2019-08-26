@@ -53,8 +53,8 @@ class Net(nn.Module):
         self.q_L=(torch.randn(self.last_weight_dim,q_rank)*0.1).requires_grad_()
         
         
-        params = list(self.parameters()) + [self.q_mu,self.q_L,self.q_sigma]
-        self.optimizer = optim.Adam(params, lr=0.00003)
+        self.params = list(self.parameters()) + [self.q_mu,self.q_L,self.q_sigma]
+        self.optimizer = optim.Adam(self.params, lr=0.0003)
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu,self.q_L,self.q_sigma], lr=0.001)
 
@@ -177,7 +177,7 @@ class Net(nn.Module):
 #         while correct_flag<5:
         right=0
         right_list=[]
-        for i in range(0,50000):
+        for i in range(0,30000):
             self.final_optimizer.zero_grad()
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.cuda(),self.q_L.cuda(),self.q_sigma.cuda(),sample_num).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             output =F.log_softmax((final_weight_samples@feature_of_data.t()).permute(0,2,1),dim=-1).view(sample_num,10)
@@ -242,7 +242,7 @@ class Net(nn.Module):
     
     
     
-nn_tanh = Net(feature_dim=20,q_rank=1).cuda()
+nn_tanh = Net(feature_dim=20,q_rank=10).cuda()
 init_train_data=train_data_tensor[0:10].cuda()
 init_train_label=train_label_tensor[0:10].cuda()
 accuracy_list=[]
@@ -250,6 +250,8 @@ for epoch in range(0,100):
     print('big_epoch:', epoch, 'start training...')
     print('train_data_size',init_train_label.size(0))
     nn_tanh.train(init_train_data,init_train_label)
+    if epoch>30:
+        nn_tanh.optimizer = optim.Adam(self.params, lr=0.00003)
     
     accuracy=nn_tanh.test(test_data_tensor.cuda(),test_label_tensor.cuda())
     accuracy_list.append(accuracy)
