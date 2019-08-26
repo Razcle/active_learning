@@ -149,8 +149,8 @@ def KL_low_rank_gaussian_with_diag_gaussian(mu_1,L_1,sigma_1,mu_2,sigma_2):
     rank_1=L_1.size(1)
     var_1=sigma_1**2
     inverse_var_1=1.0/var_1
-    logdet_1=torch.logdet(torch.diag(torch.ones([rank_1]))+inverse_var_1*(L_1.t())@L_1)+dim_1*torch.log(var_1)
-    cov_1=L_1@L_1.t()+torch.diag(torch.ones([dim_1]))*var_1
+    logdet_1=torch.logdet(torch.diag(torch.ones([rank_1]).cuda())+inverse_var_1*(L_1.t())@L_1)+dim_1*torch.log(var_1)
+    cov_1=L_1@L_1.t()+torch.diag(torch.ones([dim_1]).cuda())*var_1
     mu_diff=(mu_1-mu_2).view(-1,1)
     var_2=sigma_2**2
     return -0.5*(logdet_1-dim_1*torch.log(var_2)+dim_1-(1/var_2)*torch.trace(cov_1)-(1/var_2)*mu_diff.t()@mu_diff)

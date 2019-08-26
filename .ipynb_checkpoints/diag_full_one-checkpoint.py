@@ -88,9 +88,8 @@ class Net(nn.Module):
     def test(self,x,label,sample_num=100):
         with torch.no_grad():
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.cuda(),self.q_L.cuda(),self.q_sigma.cuda(),sample_num).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
-            feature_of_data = self.feature_forward(x,final_weight_sample)
             feature_of_data=self.feature_forward(x)
-            prediction=(torch.mean(torch.softmax((inal_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
+            pred=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             accuracy=(pred == label).sum().item()/label.size(0)
             return accuracy
         
@@ -147,7 +146,7 @@ class Net(nn.Module):
         return entropy
     
     
-    def predictive_distribution_entropy_batch(self,x):
+    def predictive_distribution_entropy_batch(self,x,sample_num=100):
         with torch.no_grad():
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.cuda(),self.q_L.cuda(),self.q_sigma.cuda(),sample_num).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
@@ -233,17 +232,17 @@ class Net(nn.Module):
         plt.show()
         return train_losses
         
-    def test(self):
-        correct=0
-        for data, target in test_loader:
-            pred = self.predict(data)
-            correct += pred.eq(target.data.view_as(pred)).sum()
-            correct_ratio= float(correct)/len(test_loader.dataset)
-        return correct_ratio
+#     def test(self):
+#         correct=0
+#         for data, target in test_loader:
+#             pred = self.predict(data)
+#             correct += pred.eq(target.data.view_as(pred)).sum()
+#             correct_ratio= float(correct)/len(test_loader.dataset)
+#         return correct_ratio
     
     
     
-nn_tanh = Net(feature_dim=20).cuda()
+nn_tanh = Net(feature_dim=20,q_rank=1).cuda()
 init_train_data=train_data_tensor[0:10].cuda()
 init_train_label=train_label_tensor[0:10].cuda()
 accuracy_list=[]
@@ -262,23 +261,23 @@ for epoch in range(0,100):
 #     print('epoch:', epoch, 'start active learning...')
 
 
-    for i in range(0,10):
-        active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-        entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
-        _, index = entropy_list.max(0)
-        init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
-        init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
-
 #     for i in range(0,10):
 #         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-#         entropy_list=[]
-#         for index in range(i*6000,(i+1)*6000):
-#             entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
-#             entropy_list.append(entropy)
+#         entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
+#         _, index = entropy_list.max(0)
+#         init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
+#         init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
 
-#         index_max = np.argmax(entropy_list)
-#         init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
-#         init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
+    for i in range(0,10):
+        active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
+        entropy_list=[]
+        for index in range(i*6000,(i+1)*6000):
+            entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
+            entropy_list.append(entropy)
+
+        index_max = np.argmax(entropy_list)
+        init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
+        init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
         
 # plt.title('test_accuracy')
 # plt.plot(accuracy_list)

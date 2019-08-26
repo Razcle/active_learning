@@ -261,23 +261,23 @@ for epoch in range(0,100):
 #     print('epoch:', epoch, 'start active learning...')
 
 
-#     for i in range(0,10):
-#         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-#         entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
-#         _, index = entropy_list.max(0)
-#         init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
-#         init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
-
     for i in range(0,10):
         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
-        entropy_list=[]
-        for index in range(i*6000,(i+1)*6000):
-            entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
-            entropy_list.append(entropy)
+        entropy_list=nn_tanh.predictive_distribution_entropy_batch(active_batch_data)
+        _, index = entropy_list.max(0)
+        init_train_data=torch.cat((init_train_data,active_batch_data[index].view(1,1,28,28).cuda()),0)
+        init_train_label=torch.cat((init_train_label,train_label_tensor[index+i*6000].view(-1).cuda()),0)
 
-        index_max = np.argmax(entropy_list)
-        init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
-        init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
+#     for i in range(0,10):
+#         active_batch_data=train_data_tensor[i*6000:(i+1)*6000].cuda()
+#         entropy_list=[]
+#         for index in range(i*6000,(i+1)*6000):
+#             entropy=nn_tanh.predictive_distribution_entropy_2(train_data_tensor[index].cuda())
+#             entropy_list.append(entropy)
+
+#         index_max = np.argmax(entropy_list)
+#         init_train_data=torch.cat((init_train_data,active_batch_data[index_max].view(1,1,28,28).cuda()),0)
+#         init_train_label=torch.cat((init_train_label,train_label_tensor[index_max+i*6000].view(-1).cuda()),0)
         
 # plt.title('test_accuracy')
 # plt.plot(accuracy_list)
