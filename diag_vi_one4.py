@@ -59,7 +59,7 @@ class Net(nn.Module):
         self.q_diag=torch.tensor(np.ones(200), dtype=torch.float, requires_grad=True)
     
         params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(params, lr=0.00003)
+        self.optimizer = optim.Adam(params, lr=0.00004)
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 

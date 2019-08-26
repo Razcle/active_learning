@@ -129,8 +129,8 @@ def low_rank_gaussian_one_sample(mu,L,sigma):
     # L is D*R
     dim=L.size(0)
     rank=L.size(1)
-    eps_z=torch.randn([rank])
-    eps=torch.randn([dim])
+    eps_z=torch.randn([rank]).cuda()
+    eps=torch.randn([dim]).cuda()
     
     return eps_z@L.t()+eps*sigma+mu
 
@@ -138,8 +138,8 @@ def low_rank_gaussian_sample(mu,L,sigma,amount):
     # L is D*R
     dim=L.size(0)
     rank=L.size(1)
-    eps_z=torch.randn([amount,rank])
-    eps=torch.randn([amount,dim])
+    eps_z=torch.randn([amount,rank]).cuda()
+    eps=torch.randn([amount,dim]).cuda()
     
     return eps_z@L.t()+eps*sigma+mu
     
