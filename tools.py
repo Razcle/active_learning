@@ -123,26 +123,7 @@ def low_rank_gaussian_logdet(L,sigma):
     var=sigma**2
     inverse_var=1.0/var
     return torch.logdet(torch.diag(torch.ones([rank]))+inverse_var*(L.t())@L)+dim*tf.log(var)
-    
 
-def low_rank_gaussian_one_sample(mu,L,sigma):
-    # L is D*R
-    dim=L.size(0)
-    rank=L.size(1)
-    eps_z=torch.randn([rank]).cuda()
-    eps=torch.randn([dim]).cuda()
-    
-    return eps_z@L.t()+eps*sigma+mu
-
-def low_rank_gaussian_sample(mu,L,sigma,amount):
-    # L is D*R
-    dim=L.size(0)
-    rank=L.size(1)
-    eps_z=torch.randn([amount,rank]).cuda()
-    eps=torch.randn([amount,dim]).cuda()
-    
-    return eps_z@L.t()+eps*sigma+mu
-    
 
 def KL_low_rank_gaussian_with_diag_gaussian(mu_1,L_1,sigma_1,mu_2,sigma_2):
     dim_1=L_1.size(0)
@@ -154,7 +135,7 @@ def KL_low_rank_gaussian_with_diag_gaussian(mu_1,L_1,sigma_1,mu_2,sigma_2):
     mu_diff=(mu_1-mu_2).view(-1,1)
     var_2=sigma_2**2
     return -0.5*(logdet_1-dim_1*torch.log(var_2)+dim_1-(1/var_2)*torch.trace(cov_1)-(1/var_2)*mu_diff.t()@mu_diff)
-    
+
 
 
 def KL_low_rank_gaussian_with_low_rank_gaussian(mu_1,L_1,sigma_1,mu_2,L_2,sigma_2):
@@ -164,52 +145,85 @@ def KL_low_rank_gaussian_with_low_rank_gaussian(mu_1,L_1,sigma_1,mu_2,L_2,sigma_
     inverse_var_1=1.0/var_1
     logdet_1=torch.logdet(torch.diag(torch.ones([rank_1]))+inverse_var_1*(L_1.t())@L_1)+dim_1*torch.log(var_1)
     cov_1=L_1@L_1.t()+torch.diag(torch.ones([dim_1]))*var_1
-    
-    
+
+
     dim_2=L_2.size(0)
     rank_2=L_2.size(1)
     var_2=sigma_2**2
     inverse_var_2=1.0/var_2
     logdet_2=torch.logdet(torch.diag(torch.ones([rank_2]))+inverse_var_2*(L_2.t())@L_2)+dim_1*torch.log(var_2)
-    
+
     inner_inverse_2=torch.inverse(torch.diag(torch.ones([rank_2]))+inverse_var_2*(L_2.t())@L_2)
     cov_inverse_2=inverse_var_2*torch.diag(torch.ones([dim_2]))-inverse_var_2**2*L_2@inner_inverse_2@L_2.t()
-    
+
     mu_diff=(mu_1-mu_2).view(-1,1)
     return -0.5*(logdet_1-logdet_2+dim_1-torch.trace(cov_1@cov_inverse_2)-mu_diff.t()@ cov_inverse_2@mu_diff)
-    
+
 
 def general_kl_divergence(mu_1,cov_1,mu_2,cov_2):
     mu_diff=(mu_1-mu_2).view(-1,1)
     cov_2_inverse=torch.inverse(cov_2)
     return -0.5*(torch.logdet(cov_1)-torch.logdet(cov_2)+mu_1.size(0)-torch.trace(cov_1@cov_2_inverse)-mu_diff.t()@cov_2_inverse@mu_diff)
-   
-    
-def sample_from_batch_categorical(batch_logits):
+
+def low_rank_gaussian_one_sample(mu,L,sigma,if_cuda):
+    # L is D*R
+    dim=L.size(0)
+    rank=L.size(1)
+    if if_cuda:
+        eps_z=torch.randn([rank]).cuda()
+        eps=torch.randn([dim]).cuda()
+    else:
+        eps_z=torch.randn([rank])
+        eps=torch.randn([dim])
+
+    return eps_z@L.t()+eps*sigma+mu
+
+def low_rank_gaussian_sample(mu,L,sigma,amount,if_cuda):
+    # L is D*R
+    dim=L.size(0)
+    rank=L.size(1)
+    if if_cuda:
+        eps_z=torch.randn([amount,rank]).cuda()
+        eps=torch.randn([amount,dim]).cuda()
+    else:
+        eps_z=torch.randn([amount,rank])
+        eps=torch.randn([amount,dim])
+
+    return eps_z@L.t()+eps*sigma+mu
+
+
+def sample_from_batch_categorical(batch_logits,if_cuda):
     ### shape batch*dim
     ### gumbel max trick
-    noise = torch.rand(batch_logits.size()).cuda()
+    if if_cuda:
+        noise = torch.rand(batch_logits.size()).cuda()
+    else:
+        noise = torch.rand(batch_logits.size())
     return torch.argmax(batch_logits - torch.log(-torch.log(noise)), dim=-1)
 
 
-def sample_from_batch_categorical_multiple(batch_logits,sample_num=1):
+def sample_from_batch_categorical_multiple(batch_logits,sample_num,if_cuda):
     ### shape batch*dim
     ### gumbel max trick
     shape=list(batch_logits.size())
     shape.insert(-1, sample_num)
-    noise = torch.rand(shape).cuda()
-    batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
-    return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
-   
-def sample_from_batch_categorical_multiple_cpu(batch_logits,sample_num=1):
-    ### shape batch*dim
-    ### gumbel max trick
-    shape=list(batch_logits.size())
-    shape.insert(-1, sample_num)
-    noise = torch.rand(shape)
+    if if_cuda:
+        noise = torch.rand(shape).cuda()
+    else:
+        noise = torch.rand(shape)
     batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
     return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
 
+# def sample_from_batch_categorical_multiple_cpu(batch_logits,sample_num=1):
+#     ### shape batch*dim
+#     ### gumbel max trick
+#     shape=list(batch_logits.size())
+#     shape.insert(-1, sample_num)
+#     noise = torch.rand(shape)
+#     batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
+#     return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
+
+
 def one_hot_embedding(labels, num_classes):
-    y = torch.eye(num_classes) 
-    return y[labels] 
+    y = torch.eye(num_classes)
+    return y[labels]
