@@ -1,7 +1,3 @@
-import os
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 import torch
 import torchvision
 import torch.nn as nn
@@ -13,37 +9,27 @@ from tools import *
 import operator
 import itertools
 
-np.random.seed(0)
-torch.manual_seed(0)
-if torch.cuda.is_available():
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    torch.device('cuda:0')
-    if_cuda=True
-else:
-    device= torch.device('cpu')
-    if_cuda=False
-
-
-class Net(nn.Module):
-    def __init__(self,feature_dim):
-        super(Net, self).__init__()
-        self.feature_dim=feature_dim
-        self.final_weight_dim=feature_dim*10
+class diagnet(nn.Module):
+    def __init__(self,opt):
+        super(diagnet, self).__init__()
+        self.feature_dim=opt['feature_dim']
+        self.final_weight_dim=opt['feature_dim']*10
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
         self.fc1 = nn.Linear(320, 100)
         self.fc2 = nn.Linear(100, self.feature_dim)
+        self.device=opt['device']
+        self.if_cuda=opt['if_cuda']
 
 
-        self.prior_mu=torch.zeros(self.final_weight_dim, requires_grad=False).to(device)
-        self.prior_diag=torch.ones(self.final_weight_dim, requires_grad=False).to(device)
+        self.prior_mu=torch.zeros(self.final_weight_dim, requires_grad=False).to(self.device)
+        self.prior_diag=torch.ones(self.final_weight_dim, requires_grad=False).to(self.device)
 
-        self.q_mu=torch.randn(self.final_weight_dim, requires_grad=True).to(device)
-        self.q_diag=torch.ones(self.final_weight_dim, requires_grad=True).to(device)
+        self.q_mu=torch.randn(self.final_weight_dim, requires_grad=True).to(self.device)
+        self.q_diag=torch.ones(self.final_weight_dim, requires_grad=True).to(self.device)
 
         params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(params, lr=0.00003)
+        self.optimizer = optim.Adam(params, lr=opt['optimizer_lr'])
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 
@@ -69,7 +55,7 @@ class Net(nn.Module):
 
     def predict(self,x):
         with torch.no_grad():
-            eps=torch.randn([100,self.final_weight_dim]).to(device)
+            eps=torch.randn([100,self.final_weight_dim]).to(self.device)
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(100).view(100,self.final_weight_dim)*eps+self.q_mu).view(100,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             prediction=(torch.mean(torch.softmax((inal_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
@@ -78,8 +64,8 @@ class Net(nn.Module):
 
     def test(self,x,label):
         with torch.no_grad():
-            eps=torch.randn([100,self.final_weight_dim]).to(device)
-            final_weight_samples=(torch.sqrt(self.q_diag.to(device)).repeat(100).view(100,self.final_weight_dim)*eps+self.q_mu.to(device)).view(100,self.feature_dim,10).permute(0, 2, 1)
+            eps=torch.randn([100,self.final_weight_dim]).to(self.device)
+            final_weight_samples=(torch.sqrt(self.q_diag.to(self.device)).repeat(100).view(100,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(100,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             pred=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             accuracy=(pred == label).sum().item()/label.size(0)
@@ -99,7 +85,7 @@ class Net(nn.Module):
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
-            output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=if_cuda).view(x.size(0),-1) ### 70*100*30
+            output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=self.if_cuda).view(x.size(0),-1) ### 70*100*30
             output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
             entropy_list=-torch.mean(torch.log(torch.mean(output_probs,dim=1)),dim=-1)
@@ -151,57 +137,12 @@ class Net(nn.Module):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
                 eps=torch.randn([self.final_weight_dim])
-                final_weight_sample= (self.q_mu.to(device)+eps*torch.sqrt(self.q_diag.to(device))).view(self.feature_dim,10)
+                final_weight_sample= (self.q_mu.to(self.device)+eps*torch.sqrt(self.q_diag.to(self.device))).view(self.feature_dim,10)
                 output = self.forward(x[index],final_weight_sample)
                 nll_loss= F.nll_loss(output,label[index],reduction='sum')*(float(x.size(0))/float(batch_size))
-                kl=KL_diag_gaussian(self.q_mu.to(device),self.q_diag.to(device),self.prior_mu.to(device),self.prior_diag.to(device))
+                kl=KL_diag_gaussian(self.q_mu.to(self.device),self.q_diag.to(self.device),self.prior_mu.to(self.device),self.prior_diag.to(self.device))
                 neg_elbo=kl+nll_loss
                 neg_elbo.backward()
                 self.optimizer.step()
                 train_losses.append(neg_elbo.item())
         return train_losses
-
-if __name__=="__main__":
-    train_data=torchvision.datasets.MNIST('./', train=True, download=True,transform=torchvision.transforms.ToTensor())
-    test_data=torchvision.datasets.MNIST('./', train=False, download=True,transform=torchvision.transforms.ToTensor())
-
-    train_data_list=[]
-    train_label_list=[]
-    for x,y in train_data:
-        train_data_list.append(x)
-        train_label_list.append(y)
-
-    test_data_list=[]
-    test_label_list=[]
-    for x,y in test_data:
-        test_data_list.append(x)
-        test_label_list.append(y)
-
-    train_data_tensor=torch.stack(train_data_list)
-    train_label_tensor=torch.tensor(train_label_list)
-    test_data_tensor=torch.stack(test_data_list)
-    test_label_tensor=torch.tensor(test_label_list)
-
-    nn_tanh = Net(feature_dim=20).to(device)
-    init_train_data=train_data_tensor[0:1].to(device)
-    init_train_label=train_label_tensor[0:1].to(device)
-
-    accuracy_list=[]
-    for epoch in range(0,100):
-        print('big_epoch:', epoch, 'start training...')
-        print('train_data_size',init_train_label.size(0))
-        nn_tanh.train(init_train_data,init_train_label)
-        accuracy=nn_tanh.test(test_data_tensor.to(device),test_label_tensor.to(device))
-        accuracy_list.append(accuracy)
-        print('epoch:', epoch, 'test_accuracy', accuracy)
-        print(accuracy_list)
-
-
-        entropy_list=[]
-        for i in range(0,10):
-           active_batch_data=train_data_tensor[i*6000:(i+1)*6000].to(device)
-           entropy_list.extend(nn_tanh.predictive_distribution_entropy_batch(active_batch_data).to_list())
-
-    _, index = entropy_list.max(0)
-    init_train_data=torch.cat((init_train_data,train_data_tensor[index].view(1,1,28,28).to(device)),0)
-    init_train_label=torch.cat((init_train_label,test_label_tensor[index].view(-1).to(device)),0)
