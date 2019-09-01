@@ -75,18 +75,18 @@ class diagnet(nn.Module):
 
     def predictive_distribution_entropy_batch(self,x, sample_num=100):
         with torch.no_grad():
-            eps=torch.randn([sample_num,self.final_weight_dim]) ### 100*200
-            final_weight_samples=(torch.sqrt(self.q_diag).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu).view(sample_num,20,10).permute(0, 2, 1)
+            eps=torch.randn([sample_num,self.final_weight_dim]).to(self.device) ### 100*200
+            final_weight_samples=(torch.sqrt(self.q_diag.to(self.device)).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)### 70*20
 
             output_logit=F.log_softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
 
-            eps=torch.randn([sample_num,self.final_weight_dim])
-            final_weight_samples=(torch.sqrt(self.q_diag).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu).view(sample_num,20,10).permute(0, 2, 1)
+            eps=torch.randn([sample_num,self.final_weight_dim]).to(self.device)
+            final_weight_samples=(torch.sqrt(self.q_diag.to(self.device))).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
             output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=self.if_cuda).view(x.size(0),-1) ### 70*100*30
-            output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10) ### 70*3000*10
+            output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10, cuda=self.if_cuda) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
             entropy_list=-torch.mean(torch.log(torch.mean(output_probs,dim=1)),dim=-1)
             return entropy_list
@@ -102,7 +102,7 @@ class diagnet(nn.Module):
 
         while correct_flag<5:
             self.final_optimizer.zero_grad()
-            eps=torch.randn([samlpe_num,self.final_weight_dim])
+            eps=torch.randn([samlpe_num,self.final_weight_dim]).to(self.device)
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(samlpe_num).view(samlpe_num,self.final_weight_dim)*eps+self.q_mu).view(samlpe_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output=torch.mean(F.log_softmax((final_weight_samples@feature_of_data.t()).permute(0, 2, 1),dim=-1),0)
@@ -133,10 +133,10 @@ class diagnet(nn.Module):
             batch_size=100
             iteration=int(x.size(0)/batch_size)
         for epoch in range(0,3000):
-            for it in range(0,int(x.size(0)/batch_size)+1):
+            for it in range(0,iteration):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
-                eps=torch.randn([self.final_weight_dim])
+                eps=torch.randn([self.final_weight_dim]).to(self.device)
                 final_weight_sample= (self.q_mu.to(self.device)+eps*torch.sqrt(self.q_diag.to(self.device))).view(self.feature_dim,10)
                 output = self.forward(x[index],final_weight_sample)
                 nll_loss= F.nll_loss(output,label[index],reduction='sum')*(float(x.size(0))/float(batch_size))

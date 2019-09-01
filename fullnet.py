@@ -60,7 +60,7 @@ class fullnet(nn.Module):
 
     def predict(self,x,sample_num=100):
         with torch.no_grad():
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu,self.q_L,self.q_sigma,sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data = self.feature_forward(x,final_weight_sample)
             prediction=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             return prediction
@@ -84,7 +84,7 @@ class fullnet(nn.Module):
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
             output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=self.if_cuda).view(x.size(0),-1) ### 70*100*30
-            output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10) ### 70*3000*10
+            output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10, cuda=self.if_cuda) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
             entropy_list=-torch.mean(torch.log(torch.mean(output_probs,dim=1)),dim=-1)
             return entropy_list

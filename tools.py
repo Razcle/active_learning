@@ -228,6 +228,9 @@ def sample_from_batch_categorical_multiple(batch_logits,sample_num,cuda):
 #     return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
 
 
-def one_hot_embedding(labels, num_classes):
-    y = torch.eye(num_classes)
+def one_hot_embedding(labels, num_classes,cuda):
+    if cuda:
+        y = torch.eye(num_classes).cuda()
+    else:
+        y = torch.eye(num_classes)
     return y[labels]
