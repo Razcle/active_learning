@@ -63,14 +63,14 @@ class Net(nn.Module):
 
     def predict(self,x,sample_num=100):
         with torch.no_grad():
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu,self.q_L,self.q_sigma,sample_num,if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+            final_weight_samples=low_rank_gaussian_sample(self.q_mu,self.q_L,self.q_sigma,sample_num,cuda=if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data = self.feature_forward(x,final_weight_sample)
             prediction=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             return prediction
 
     def test(self,x,label,sample_num=100):
         with torch.no_grad():
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),sample_num,if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),sample_num,cuda=if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             pred=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             accuracy=(pred == label).sum().item()/label.size(0)
@@ -90,7 +90,7 @@ class Net(nn.Module):
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
-            output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,if_cuda).view(x.size(0),-1) ### 70*100*30
+            output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=if_cuda).view(x.size(0),-1) ### 70*100*30
             output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
             entropy_list=-torch.mean(torch.log(torch.mean(output_probs,dim=1)),dim=-1)
@@ -119,7 +119,7 @@ class Net(nn.Module):
         right_list=[]
         for i in range(0,50000):
             self.final_optimizer.zero_grad()
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),sample_num,if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),sample_num,cuda=if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             output =F.log_softmax((final_weight_samples@feature_of_data.t()).permute(0,2,1),dim=-1).view(sample_num,10)
             label_batch=label.repeat(sample_num)
             nll_loss= F.nll_loss(output,label_batch,reduction='mean')
@@ -160,7 +160,7 @@ class Net(nn.Module):
             for it in range(0,iteration):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
-                final_weight_sample= low_rank_gaussian_one_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),if_cuda).view(self.feature_dim,10)
+                final_weight_sample= low_rank_gaussian_one_sample(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),cuda=if_cuda).view(self.feature_dim,10)
                 output = self.forward(x[index],final_weight_sample)
                 nll_loss= F.nll_loss(output,label[index],reduction='sum')*(float(x.size(0))/float(batch_size))
                 kl=KL_low_rank_gaussian_with_diag_gaussian(self.q_mu.to(device),self.q_L.to(device),self.q_sigma.to(device),self.prior_mu.to(device),self.prior_sigma.to(device))

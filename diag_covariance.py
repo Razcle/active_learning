@@ -99,7 +99,7 @@ class Net(nn.Module):
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
-            output_dis_for_sample=sample_from_batch_categorical_multiple_cpu(output_logit,sample_num=30).view(x.size(0),-1) ### 70*100*30
+            output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=if_cuda).view(x.size(0),-1) ### 70*100*30
             output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
             entropy_list=-torch.mean(torch.log(torch.mean(output_probs,dim=1)),dim=-1)

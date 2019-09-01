@@ -165,11 +165,11 @@ def general_kl_divergence(mu_1,cov_1,mu_2,cov_2):
     cov_2_inverse=torch.inverse(cov_2)
     return -0.5*(torch.logdet(cov_1)-torch.logdet(cov_2)+mu_1.size(0)-torch.trace(cov_1@cov_2_inverse)-mu_diff.t()@cov_2_inverse@mu_diff)
 
-def low_rank_gaussian_one_sample(mu,L,sigma,if_cuda):
+def low_rank_gaussian_one_sample(mu,L,sigma,cuda):
     # L is D*R
     dim=L.size(0)
     rank=L.size(1)
-    if if_cuda:
+    if cuda:
         eps_z=torch.randn([rank]).cuda()
         eps=torch.randn([dim]).cuda()
     else:
@@ -178,11 +178,11 @@ def low_rank_gaussian_one_sample(mu,L,sigma,if_cuda):
 
     return eps_z@L.t()+eps*sigma+mu
 
-def low_rank_gaussian_sample(mu,L,sigma,amount,if_cuda):
+def low_rank_gaussian_sample(mu,L,sigma,amount,cuda):
     # L is D*R
     dim=L.size(0)
     rank=L.size(1)
-    if if_cuda:
+    if cuda:
         eps_z=torch.randn([amount,rank]).cuda()
         eps=torch.randn([amount,dim]).cuda()
     else:
@@ -192,22 +192,22 @@ def low_rank_gaussian_sample(mu,L,sigma,amount,if_cuda):
     return eps_z@L.t()+eps*sigma+mu
 
 
-def sample_from_batch_categorical(batch_logits,if_cuda):
+def sample_from_batch_categorical(batch_logits,cuda):
     ### shape batch*dim
     ### gumbel max trick
-    if if_cuda:
+    if cuda:
         noise = torch.rand(batch_logits.size()).cuda()
     else:
         noise = torch.rand(batch_logits.size())
     return torch.argmax(batch_logits - torch.log(-torch.log(noise)), dim=-1)
 
 
-def sample_from_batch_categorical_multiple(batch_logits,sample_num,if_cuda):
+def sample_from_batch_categorical_multiple(batch_logits,sample_num,cuda):
     ### shape batch*dim
     ### gumbel max trick
     shape=list(batch_logits.size())
     shape.insert(-1, sample_num)
-    if if_cuda:
+    if cuda:
         noise = torch.rand(shape).cuda()
     else:
         noise = torch.rand(shape)
