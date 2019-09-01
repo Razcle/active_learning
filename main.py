@@ -55,7 +55,7 @@ def main(opt):
     init_train_label=train_label_tensor[0:1].to(opt['device'])
 
     accuracy_list=[]
-    for epoch in range(0,1):
+    for epoch in range(0,200):
         print('big_epoch:', epoch, 'start training...')
         print('train_data_size',init_train_label.size(0))
         nn_tanh.train(init_train_data,init_train_label)
@@ -66,7 +66,7 @@ def main(opt):
 
 
         entropy_list=[]
-        for i in range(0,1):
+        for i in range(0,10):
             print('iterations',i)
             active_batch_data=train_data_tensor[i*6000:(i+1)*6000].to(opt['device'])
             entropy_list.extend(nn_tanh.predictive_distribution_entropy_batch(active_batch_data).tolist())
