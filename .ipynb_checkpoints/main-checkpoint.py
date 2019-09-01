@@ -13,7 +13,6 @@ import operator
 import itertools
 from diagnet import diagnet
 from fullnet import fullnet
-from vanillanet import vanillanet
 
 # np.random.seed(0)
 # torch.manual_seed(0)
@@ -53,7 +52,7 @@ def main(opt):
     elif opt['net']=='fullnet':
         nn_tanh = fullnet(opt).to(opt['device'])
     elif opt['net']=='vanilla':
-        nn_tanh = vanillanet(opt).to(opt['device'])
+        nn_tanh = fullnet(opt).to(opt['device'])
     init_train_data=train_data_tensor[0:1].to(opt['device'])
     init_train_label=train_label_tensor[0:1].to(opt['device'])
 
