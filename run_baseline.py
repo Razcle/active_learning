@@ -23,38 +23,6 @@ if __name__=='__main__':
         opt['device']= torch.device('cpu')
         opt['if_cuda']=False
     opt['feature_dim']=20
-    opt['net']='diagnet'
-    for lr in [1e-3,5e-4,3e-4,1e-4,5e-5,3e-5,1e-5]:
-        opt['optimizer_lr']=lr
-        result_list=main(opt)
-        f = open("result.txt", "a")
-        f.write("parameters:"+str(opt)+'\n')
-        f.write(str(result_list)+'\n')
-        f.close()
-
-
-    f = open("result.txt", "a")
-    f.write('\n\n')
-    f.close()
-
-    opt['net']='fullnet'
-    opt['q_rank']=1
-    for lr in [1e-3,5e-4,3e-4,1e-4,5e-5,3e-5,1e-5]:
-        opt['optimizer_lr']=lr
-        result_list=main(opt)
-        f = open("result.txt", "a")
-        f.write("parameters:"+str(opt)+'\n')
-        f.write(str(result_list)+'\n')
-        f.close()
-
-    f = open("result.txt", "a")
-    f.write('\n\n')
-    f.close()
-    opt['q_rank']=10
-    for lr in [1e-3,5e-4,3e-4,1e-4,5e-5,3e-5,1e-5]:
-        opt['optimizer_lr']=lr
-        result_list=main(opt)
-        f = open("result.txt", "a")
-        f.write("parameters:"+str(opt)+'\n')
-        f.write(str(result_list)+'\n')
-        f.close()
+    opt['net']='vanillanet'
+    result_list=main(opt)
+    print(result_list)
