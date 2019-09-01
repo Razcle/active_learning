@@ -52,7 +52,7 @@ def main(opt):
         nn_tanh = diagnet(opt).to(opt['device'])
     elif opt['net']=='fullnet':
         nn_tanh = fullnet(opt).to(opt['device'])
-    elif opt['net']=='vanilla':
+    elif opt['net']=='vanillanet':
         nn_tanh = vanillanet(opt).to(opt['device'])
     init_train_data=train_data_tensor[0:1].to(opt['device'])
     init_train_label=train_label_tensor[0:1].to(opt['device'])
