@@ -22,11 +22,11 @@ class diagnet(nn.Module):
         self.if_cuda=opt['if_cuda']
 
 
-        self.prior_mu=torch.zeros(self.final_weight_dim, requires_grad=False).to(self.device)
-        self.prior_diag=torch.ones(self.final_weight_dim, requires_grad=False).to(self.device)
+        self.prior_mu=torch.zeros(self.final_weight_dim, requires_grad=False)
+        self.prior_diag=torch.ones(self.final_weight_dim, requires_grad=False)
 
-        self.q_mu=torch.randn(self.final_weight_dim, requires_grad=True).to(self.device)
-        self.q_diag=torch.ones(self.final_weight_dim, requires_grad=True).to(self.device)
+        self.q_mu=torch.randn(self.final_weight_dim, requires_grad=True)
+        self.q_diag=torch.ones(self.final_weight_dim, requires_grad=True)
 
         params = list(self.parameters()) + [self.q_mu,self.q_diag]
         self.optimizer = optim.Adam(params, lr=opt['optimizer_lr'])
@@ -82,7 +82,7 @@ class diagnet(nn.Module):
             output_logit=F.log_softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
 
             eps=torch.randn([sample_num,self.final_weight_dim]).to(self.device)
-            final_weight_samples=(torch.sqrt(self.q_diag.to(self.device))).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(sample_num,20,10).permute(0, 2, 1)
+            final_weight_samples=(torch.sqrt(self.q_diag.to(self.device)).repeat(sample_num).view(sample_num,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(sample_num,20,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
             output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=self.if_cuda).view(x.size(0),-1) ### 70*100*30
