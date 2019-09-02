@@ -58,7 +58,7 @@ def main(opt):
     init_train_label=train_label_tensor[0:1].to(opt['device'])
 
     accuracy_list=[]
-    for epoch in range(0,200):
+    for epoch in range(0,500):
         print('big_epoch:', epoch, 'start training...')
         print('train_data_size',init_train_label.size(0))
         nn_tanh.train(init_train_data,init_train_label)

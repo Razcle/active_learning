@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+os.environ["CUDA_VISIBLE_DEVICES"] = "4"
 import torch
 import torchvision
 import torch.nn as nn
@@ -22,11 +22,14 @@ if __name__=='__main__':
     else:
         opt['device']= torch.device('cpu')
         opt['if_cuda']=False
+
+    #opt['q_rank']=10
+    opt['optimizer_lr']=3e-5
     opt['feature_dim']=20
-    opt['net']='vanillanet'
+    opt['net']='diagnet'
     result_list=main(opt)
     print(result_list)
-    f = open("baseline_result.txt", "a")
+    f = open("full_result.txt", "a")
     f.write("parameters:"+str(opt)+'\n')
     f.write(str(result_list)+'\n')
     f.close()

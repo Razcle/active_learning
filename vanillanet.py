@@ -11,7 +11,7 @@ import itertools
 
 class vanillanet(nn.Module):
     def __init__(self,opt):
-        super(vinillanet, self).__init__()
+        super(vanillanet, self).__init__()
         self.feature_dim=opt['feature_dim']
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
         self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
@@ -33,7 +33,7 @@ class vanillanet(nn.Module):
         x= self.fc3(x)
         return F.log_softmax(x,dim=-1)
 
-    def predictive_distribution_entropy(self,x):
+    def predictive_distribution_entropy_batch(self,x):
         with torch.no_grad():
             batch_logit=self.forward(x)
             batch_probs=torch.exp(batch_logit)
