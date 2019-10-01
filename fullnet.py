@@ -32,8 +32,8 @@ class fullnet(nn.Module):
         self.q_L=(torch.randn(self.final_weight_dim,self.q_rank)*0.1).requires_grad_()
 
 
-        params = list(self.parameters()) + [self.q_mu,self.q_L,self.q_sigma]
-        self.optimizer = optim.Adam(params, lr=opt['optimizer_lr'])
+        self.params = list(self.parameters()) + [self.q_mu,self.q_L,self.q_sigma]
+        self.optimizer = optim.Adam(self.params, lr=opt['optimizer_lr'])
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu,self.q_L,self.q_sigma], lr=0.001)
 
@@ -69,7 +69,7 @@ class fullnet(nn.Module):
         with torch.no_grad():
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
-            pred=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
+            pred=(torch.mean(torch.nn.functional.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             accuracy=(pred == label).sum().item()/label.size(0)
             return accuracy
 
@@ -115,7 +115,7 @@ class fullnet(nn.Module):
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             output =F.log_softmax((final_weight_samples@feature_of_data.t()).permute(0,2,1),dim=-1).view(sample_num,10)
             label_batch=label.repeat(sample_num)
-            nll_loss= F.nll_loss(output,label_batch,reduction='mean')
+            nll_loss= F.nll_loss(output,label_batch)
             kl=KL_low_rank_gaussian_with_low_rank_gaussian(self.q_mu,self.q_L,self.q_sigma,curr_prior_mu,curr_prior_L,curr_prior_sigma)
             neg_elbo=kl+2*nll_loss
             neg_elbo.backward()
@@ -155,7 +155,7 @@ class fullnet(nn.Module):
                 self.optimizer.zero_grad()
                 final_weight_sample= low_rank_gaussian_one_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),cuda=self.if_cuda).view(self.feature_dim,10)
                 output = self.forward(x[index],final_weight_sample)
-                nll_loss= F.nll_loss(output,label[index],reduction='sum')*(float(x.size(0))/float(batch_size))
+                nll_loss= F.nll_loss(output,label[index])*float(x.size(0))
                 kl=KL_low_rank_gaussian_with_diag_gaussian(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),self.prior_mu.to(self.device),self.prior_sigma.to(self.device),cuda=self.if_cuda)
                 neg_elbo=kl+nll_loss
                 neg_elbo.backward()

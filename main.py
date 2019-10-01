@@ -58,15 +58,20 @@ def main(opt):
     init_train_label=train_label_tensor[0:1].to(opt['device'])
 
     accuracy_list=[]
-    for epoch in range(0,500):
+    for epoch in range(0,1000):
         print('big_epoch:', epoch, 'start training...')
         print('train_data_size',init_train_label.size(0))
+       
+        if epoch==300:
+            nn_tanh.optimizer = optim.Adam(nn_tanh.params, lr=5e-6)
+
+
         nn_tanh.train(init_train_data,init_train_label)
         accuracy=nn_tanh.test(test_data_tensor.to(opt['device']),test_label_tensor.to(opt['device']))
         accuracy_list.append(accuracy)
         print('epoch:', epoch, 'test_accuracy', accuracy)
         print(accuracy_list)
-
+        
 
         entropy_list=[]
         for i in range(0,10):

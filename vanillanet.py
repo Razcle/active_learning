@@ -56,7 +56,7 @@ class vanillanet(nn.Module):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
                 output = self.forward(x[index])
-                nll_loss= F.nll_loss(output,label[index],reduction='sum')
+                nll_loss= F.nll_loss(output,label[index])
                 nll_loss.backward()
                 self.optimizer.step()
                 train_losses.append(nll_loss.item())

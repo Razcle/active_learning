@@ -28,8 +28,8 @@ class diagnet(nn.Module):
         self.q_mu=torch.randn(self.final_weight_dim, requires_grad=True)
         self.q_diag=torch.ones(self.final_weight_dim, requires_grad=True)
 
-        params = list(self.parameters()) + [self.q_mu,self.q_diag]
-        self.optimizer = optim.Adam(params, lr=opt['optimizer_lr'])
+        self.params = list(self.parameters()) + [self.q_mu,self.q_diag]
+        self.optimizer = optim.Adam(self.params, lr=opt['optimizer_lr'])
         self.feature_optimizer = optim.Adam(self.parameters(), lr=0.001)
         self.final_optimizer = optim.Adam([ self.q_mu, self.q_diag ], lr=0.001)
 
@@ -58,7 +58,7 @@ class diagnet(nn.Module):
             eps=torch.randn([100,self.final_weight_dim]).to(self.device)
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(100).view(100,self.final_weight_dim)*eps+self.q_mu).view(100,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
-            prediction=(torch.mean(torch.softmax((inal_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
+            prediction=(torch.mean(F.softmax((inal_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             return prediction
 
 
@@ -67,7 +67,7 @@ class diagnet(nn.Module):
             eps=torch.randn([100,self.final_weight_dim]).to(self.device)
             final_weight_samples=(torch.sqrt(self.q_diag.to(self.device)).repeat(100).view(100,self.final_weight_dim)*eps+self.q_mu.to(self.device)).view(100,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
-            pred=(torch.mean(torch.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
+            pred=(torch.mean(F.softmax((final_weight_samples@feature_of_data.t()).permute(2, 0, 1),dim=-1),1).data.max(dim=1, keepdim=True)[1]).view(-1)
             accuracy=(pred == label).sum().item()/label.size(0)
             return accuracy
 
@@ -106,7 +106,7 @@ class diagnet(nn.Module):
             final_weight_samples=(torch.sqrt(self.q_diag).repeat(samlpe_num).view(samlpe_num,self.final_weight_dim)*eps+self.q_mu).view(samlpe_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)
             output=torch.mean(F.log_softmax((final_weight_samples@feature_of_data.t()).permute(0, 2, 1),dim=-1),0)
-            nll_loss= F.nll_loss(output,label,reduction='sum')
+            #nll_loss= F.nll_loss(output,label,reduction='sum')
             kl=KL_diag_gaussian(self.q_mu,self.q_diag,curr_prior_mu,curr_prior_diag)
             neg_elbo=kl+nll_loss
             neg_elbo.backward()
@@ -139,7 +139,7 @@ class diagnet(nn.Module):
                 eps=torch.randn([self.final_weight_dim]).to(self.device)
                 final_weight_sample= (self.q_mu.to(self.device)+eps*torch.sqrt(self.q_diag.to(self.device))).view(self.feature_dim,10)
                 output = self.forward(x[index],final_weight_sample)
-                nll_loss= F.nll_loss(output,label[index],reduction='sum')*(float(x.size(0))/float(batch_size))
+                nll_loss= F.nll_loss(output,label[index])*(float(x.size(0)))
                 kl=KL_diag_gaussian(self.q_mu.to(self.device),self.q_diag.to(self.device),self.prior_mu.to(self.device),self.prior_diag.to(self.device))
                 neg_elbo=kl+nll_loss
                 neg_elbo.backward()

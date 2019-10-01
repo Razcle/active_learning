@@ -1,6 +1,6 @@
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import torch
 import torchvision
 import torch.nn as nn
@@ -29,7 +29,7 @@ if __name__=='__main__':
     opt['net']='fullnet'
     result_list=main(opt)
     print(result_list)
-    f = open("full_result2.txt", "a")
+    f = open("full_result_anneal.txt", "a")
     f.write("parameters:"+str(opt)+'\n')
     f.write(str(result_list)+'\n')
     f.close()
