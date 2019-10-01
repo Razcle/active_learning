@@ -23,12 +23,12 @@ class vanillanet(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=0.001)
 
-    def forward(self, x):
+    def forward(self, x, dropout_training=True, dropout_rate=0.5):
         x=x.view(-1,1,28,28)
-        x = F.relu(F.max_pool2d(self.conv1(x), 2))
-        x = F.relu(F.max_pool2d(self.conv2(x), 2))
+        x = F.dropout(F.relu(F.max_pool2d(self.conv1(x), 2)), p=dropout_rate, training=dropout_training)
+        x = F.dropout(F.relu(F.max_pool2d(self.conv2(x), 2)), p=dropout_rate, training=dropout_training)
         x = x.view(-1, 320)
-        x = F.relu(self.fc1(x))
+        x = F.dropout(F.relu(self.fc1(x)), p=dropout_rate,training=dropout_training)
         x =torch.tanh(self.fc2(x))
         x= self.fc3(x)
         return F.log_softmax(x,dim=-1)
@@ -40,7 +40,6 @@ class vanillanet(nn.Module):
             batch_entropy=-torch.sum(batch_logit*batch_probs,dim=-1)
 #             print(batch_entropy.size())
         return batch_entropy
-
 
 
     def train(self,x,label):
@@ -55,7 +54,7 @@ class vanillanet(nn.Module):
             for it in range(0,iteration):
                 index=np.random.choice(x.size(0),batch_size)
                 self.optimizer.zero_grad()
-                output = self.forward(x[index])
+                output = self.forward(x[index],dropout_training=True)
                 nll_loss= F.nll_loss(output,label[index])
                 nll_loss.backward()
                 self.optimizer.step()
@@ -67,7 +66,7 @@ class vanillanet(nn.Module):
 
     def test(self,x,label):
         correct=0
-        pred = (self.forward(x).data.max(dim=1, keepdim=True)[1]).view(-1)
+        pred = (self.forward(x,dropout_training=False).data.max(dim=1, keepdim=True)[1]).view(-1)
 #         print(pred)
 #         print(label)
 #         print(torch.nonzero(pred-label))
