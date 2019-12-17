@@ -47,7 +47,6 @@ def main(opt):
     train_label_tensor=torch.tensor(train_label_list)
     test_data_tensor=torch.stack(test_data_list)
     test_label_tensor=torch.tensor(test_label_list)
-(torch.stack([train_data_list[i] for i in index]
     if opt['net']=='diagnet':
         nn_tanh = diagnet(opt).to(opt['device'])
     elif opt['net']=='fullnet':
