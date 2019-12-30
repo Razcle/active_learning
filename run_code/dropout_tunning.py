@@ -15,16 +15,16 @@ from diagnet import diagnet
 from fullnet import fullnet
 from vanillanet import vanillanet
 
-#np.random.seed(0)
-#torch.manual_seed(0)
-#if torch.cuda.is_available():
-#    torch.backends.cudnn.deterministic = True
-#    torch.backends.cudnn.benchmark = False
-#    torch.device('cuda:0')
-#    if_cuda=True
-#else:
-#    device= torch.device('cpu')
-#    if_cuda=False
+# np.random.seed(0)
+# torch.manual_seed(0)
+# if torch.cuda.is_available():
+#     torch.backends.cudnn.deterministic = True
+#     torch.backends.cudnn.benchmark = False
+#     torch.device('cuda:0')
+#     if_cuda=True
+# else:
+#     device= torch.device('cpu')
+#     if_cuda=False
 
 
 def main(opt):
@@ -47,25 +47,22 @@ def main(opt):
     train_label_tensor=torch.tensor(train_label_list)
     test_data_tensor=torch.stack(test_data_list)
     test_label_tensor=torch.tensor(test_label_list)
-
     if opt['net']=='diagnet':
         nn_tanh = diagnet(opt).to(opt['device'])
     elif opt['net']=='fullnet':
         nn_tanh = fullnet(opt).to(opt['device'])
     elif opt['net']=='vanillanet':
         nn_tanh = vanillanet(opt).to(opt['device'])
-    init_train_data=train_data_tensor[0:1].to(opt['device'])
-    init_train_label=train_label_tensor[0:1].to(opt['device'])
 
     accuracy_list=[]
-    for epoch in range(0,1000):
-        print('big_epoch:', epoch, 'start training...')
-        print('train_data_size',init_train_label.size(0))
-        nn_tanh.train(init_train_data,init_train_label)
-        accuracy=nn_tanh.test(test_data_tensor.to(opt['device']),test_label_tensor.to(opt['device']))
-        accuracy_list.append(accuracy)
-        print('epoch:', epoch, 'test_accuracy', accuracy)
-        print(accuracy_list)
+    for epoch in range(0,100):
+        for it in range(0,600):
+            index = list(np.random.choice(60000,100))
+            nn_tanh.train(torch.stack([train_data_list[i] for i in index]).to(opt['device']),torch.tensor([train_label_list[i] for i in index]).to(opt['device']))
+            accuracy=nn_tanh.test(test_data_tensor.to(opt['device']),test_label_tensor.to(opt['device']))
+            accuracy_list.append(accuracy)
+            print('epoch:', epoch, 'test_accuracy', accuracy)
+            print(accuracy_list)
 
 
         #entropy_list=[]
@@ -74,9 +71,5 @@ def main(opt):
         #    active_batch_data=train_data_tensor[i*6000:(i+1)*6000].to(opt['device'])
         #    entropy_list.extend(nn_tanh.predictive_distribution_entropy_batch(active_batch_data).tolist())
 
-        index = np.random.choice(60000,1)
-        print('active label:', index)
-        init_train_data=torch.cat((init_train_data,train_data_tensor[index].view(1,1,28,28).to(opt['device'])),0)
-        init_train_label=torch.cat((init_train_label,train_label_tensor[index].view(-1).to(opt['device'])),0)
 
     return accuracy_list
