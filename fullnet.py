@@ -117,7 +117,7 @@ class fullnet(nn.Module):
             label_batch=label.repeat(sample_num)
             nll_loss= F.nll_loss(output,label_batch)
             kl=KL_low_rank_gaussian_with_low_rank_gaussian(self.q_mu,self.q_L,self.q_sigma,curr_prior_mu,curr_prior_L,curr_prior_sigma)
-            neg_elbo=kl+2*nll_loss
+            neg_elbo=kl+nll_loss
             neg_elbo.backward()
             self.final_optimizer.step()
             train_losses.append(neg_elbo.item())

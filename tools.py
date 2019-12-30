@@ -238,15 +238,6 @@ def sample_from_batch_categorical_multiple(batch_logits,sample_num,cuda=True):
     batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
     return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
 
-# def sample_from_batch_categorical_multiple_cpu(batch_logits,sample_num=1):
-#     ### shape batch*dim
-#     ### gumbel max trick
-#     shape=list(batch_logits.size())
-#     shape.insert(-1, sample_num)
-#     noise = torch.rand(shape)
-#     batch_logits_multiple=batch_logits.repeat(1,1,1,sample_num).view(shape)
-#     return torch.argmax(batch_logits_multiple - torch.log(-torch.log(noise)), dim=-1)
-
 
 def one_hot_embedding(labels, num_classes,cuda=True):
     if cuda:
