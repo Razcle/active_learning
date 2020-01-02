@@ -245,3 +245,8 @@ def one_hot_embedding(labels, num_classes,cuda=True):
     else:
         y = torch.eye(num_classes)
     return y[labels]
+
+
+def kroneck(a,b):
+    c=a.unsqueeze(-2).unsqueeze(-1).mul(b.unsqueeze(-3).unsqueeze(-2))
+    return c.view(-1,c.size()[1]*c.size()[2],c.size(3)*c.size(4))

@@ -75,6 +75,15 @@ class fullnet(nn.Module):
 
 
 
+    def preactivation_entropy_batch(self,x, sample_num=100):
+        with torch.no_grad():
+            feature_of_data=self.feature_forward(x)### 70*20
+            diag=torch.diag(torch.ones(10))
+            left=kroneck(diag,feature_of_data.view(-1,1,self.feature_dim))
+            cov=self.q_L@self.q_L.t()+torch.diag(self.q_sigma)
+            transformed_cov=torch.bmm(left@cov,left.transpose(1,2))
+            return torch.tensor([torch.logdet(yo) for yo in transformed_cov])
+
     def predictive_distribution_entropy_batch(self,x, sample_num=100):
         with torch.no_grad():
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
