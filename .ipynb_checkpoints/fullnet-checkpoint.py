@@ -75,14 +75,26 @@ class fullnet(nn.Module):
 
 
 
+    def preactivation_entropy_batch(self,x, sample_num=100):
+        with torch.no_grad():
+            feature_of_data=self.feature_forward(x)### 70*20
+            diag=torch.diag(torch.ones(10)).to(self.device)
+            left=kroneck(diag,feature_of_data.view(-1,1,self.feature_dim))
+            print(self.q_L.size())
+            print(self.q_sigma.size())
+            cov=self.q_L.to(self.device)@self.q_L.to(self.device).t()+torch.diag(torch.ones(200).to(self.device))*self.q_sigma.to(self.device)
+            transformed_cov=torch.bmm(left@cov,left.transpose(1,2))
+            return torch.tensor([torch.logdet(yo) for yo in transformed_cov])
+
     def predictive_distribution_entropy_batch(self,x, sample_num=100):
         with torch.no_grad():
             final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
             feature_of_data=self.feature_forward(x)### 70*20
             output_logit=F.log_softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
-            final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
-            feature_of_data=self.feature_forward(x)
-            output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
+            output_probs=F.softmax(output_logit,dim=-1) ###70*100*10
+            #           final_weight_samples=low_rank_gaussian_sample(self.q_mu.to(self.device),self.q_L.to(self.device),self.q_sigma.to(self.device),sample_num,cuda=self.if_cuda).view(sample_num,self.feature_dim,10).permute(0, 2, 1)
+#             feature_of_data=self.feature_forward(x)
+#             output_probs=F.softmax((final_weight_samples@feature_of_data.t()).permute(2,0,1),dim=-1) ###70*100*10
             output_dis_for_sample=sample_from_batch_categorical_multiple(output_logit,sample_num=30,cuda=self.if_cuda).view(x.size(0),-1) ### 70*100*30
             output_dis_for_sample_one_hot=one_hot_embedding(output_dis_for_sample, 10, cuda=self.if_cuda) ### 70*3000*10
             output_probs=output_probs@output_dis_for_sample_one_hot.permute(0,2,1) ### 70*100*3000
@@ -117,7 +129,7 @@ class fullnet(nn.Module):
             label_batch=label.repeat(sample_num)
             nll_loss= F.nll_loss(output,label_batch)
             kl=KL_low_rank_gaussian_with_low_rank_gaussian(self.q_mu,self.q_L,self.q_sigma,curr_prior_mu,curr_prior_L,curr_prior_sigma)
-            neg_elbo=kl+2*nll_loss
+            neg_elbo=kl+nll_loss
             neg_elbo.backward()
             self.final_optimizer.step()
             train_losses.append(neg_elbo.item())
